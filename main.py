@@ -5,7 +5,23 @@ from math import sqrt
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.animation import FuncAnimation
 
-fig, ax = plt.subplots()
+def readPresentedOrDefaultInt(i_s, d):
+    if len(i_s) == 0:
+        return d
+    return int(i_s)
+
+def readPresentedOrDefaultFloat(i_s, d):
+    if len(i_s) == 0:
+        return d
+    return float(i_s)
+
+t_w = readPresentedOrDefaultInt(input("Input texture width(100): "), 100)
+t_h = readPresentedOrDefaultInt(input("Input texture height(100): "), 100)
+scale = readPresentedOrDefaultFloat(input("Input noise scale(1/20): "), 1/20)
+v_w = readPresentedOrDefaultInt(input("Input vector grid width(100): "), 100)
+v_h = readPresentedOrDefaultInt(input("Input vector grid height(100): "), 100)
+v_d = readPresentedOrDefaultInt(input("Input vector grid deepness(100): "), 100)
+anim_interval = readPresentedOrDefaultInt(input("Input animation interval in ms(50): "), 50)
 
 gradient_vectors = [
     [1, 1, -1], 
@@ -24,7 +40,7 @@ def smoothstep(t):
 def interp(x, p1, p2):  # p = [ x, v ]
     return p1[1] + (p2[1] - p1[1]) * smoothstep(((x - p1[0])/(p2[0] - p1[0])))
 
-def trilerp(x, y, z, points):   # points = [ [[x,y,z], v] ]
+def triinterp(x, y, z, points):   # points = [ [[x,y,z], v] ]
     # Along x-axis
     vx1 = interp(x, [points[0][0][0], points[0][1]], [points[4][0][0], points[4][1]])
     vx2 = interp(x, [points[1][0][0], points[1][1]], [points[5][0][0], points[5][1]])
@@ -78,36 +94,36 @@ def getValue(vg, x, y, z):
         offset = getVector(corner[0], [x, y, z])
         dp.append([corner[0], dot(corner[1], offset)])
     
-    # Lerp
-    return trilerp(x, y, z, dp)
+    # Interpolation
+    return triinterp(x, y, z, dp)
+
+def renderTexture(img, grid, width, height, scale, z):
+    for x in range(0, width):
+        img.append([])
+        for y in range(0, height):
+            img[x].append(getValue(grid, x*scale, y*scale, z*scale))
+
 
 grid = []
-genVectorGrid3D(100, 100, 100, grid)
+genVectorGrid3D(v_w, v_h, v_d, grid)
 
+fig, ax = plt.subplots()
 img = []
-
-for x in range(0, 100):
-    img.append([])
-    for y in range(0, 100):
-        img[x].append(getValue(grid, x/5, y/5, 0))
-
+renderTexture(img, grid, t_w, t_h, scale, 0)
 im = ax.imshow(img, animated=True, interpolation="nearest")
 
 def update(i):
     global img, grid, im
     img=[]
-    for x in range(0, 100):
-        img.append([])
-        for y in range(0, 100):
-            img[x].append(getValue(grid, x/15, y/15, i/20))
+    renderTexture(img, grid, t_w, t_h, scale, i)
     im.set_array(img)
     return [im]
 
 ani = FuncAnimation(
     fig,
     update,
-    frames=100,
-    interval=50,
+    frames=v_d,
+    interval=anim_interval,
     blit=True,
     repeat=True
 )
